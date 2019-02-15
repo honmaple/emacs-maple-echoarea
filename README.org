@@ -1,0 +1,9 @@
+* emacs-maple-echoarea
+  Auto hide echo area and show modeline
+
+** usage
+   #+begin_src elisp
+     (use-package maple-echoarea
+       :ensure nil
+       :commands (maple-echoarea-enable maple-echoarea-disable))
+   #+end_src
