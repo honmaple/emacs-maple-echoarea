@@ -28,63 +28,70 @@
 (defvar maple-echoarea-show-p nil)
 (defvar maple-echoarea-buffer " *Minibuf-0*")
 
+(defgroup maple-echoarea nil
+  "Display maple line in window side."
+  :group 'maple)
+
 (defun maple-echoarea-enter()
   "Setup after enter minibuffer."
   (with-selected-window (minibuffer-selected-window)
     (maple-echoarea-unshow)))
 
-(defun maple-echoarea-show (&optional force)
+(defun maple-echoarea-message (&rest _args)
+  "Advice message with ARGS."
+  (if (current-message)
+      (maple-echoarea-unshow)
+    (maple-echoarea-show)))
+
+(defun maple-echoarea-hide-mode-line()
+  "Unshow modeline with FORCE."
+  (setq maple-echoarea-format mode-line-format)
+  (setq mode-line-format nil))
+
+(defun maple-echoarea-show ()
   "Show modeline with FORCE."
-  (when mode-line-format
-    (setq maple-echoarea-format mode-line-format)
-    (setq mode-line-format nil))
-  (set-window-fringes (minibuffer-window) 0 0)
-  (setq message-truncate-lines t)
+  (maple-echoarea-hide-mode-line)
   (with-current-buffer maple-echoarea-buffer
     (erase-buffer)
     (insert (format-mode-line maple-echoarea-format)))
-  (when (and (not maple-echoarea-show-p) force)
+  (unless maple-echoarea-show-p
+    (set-window-fringes (minibuffer-window) 0 1)
+    (set-window-margins (minibuffer-window) 0 0)
+    (setq message-truncate-lines t)
     (force-window-update))
   (setq maple-echoarea-show-p t))
 
-(defun maple-echoarea-unshow (&optional force)
+(defun maple-echoarea-unshow ()
   "Unshow modeline with FORCE."
-  (when maple-echoarea-format
-    (setq mode-line-format maple-echoarea-format)
-    (force-mode-line-update))
-  (set-window-fringes (minibuffer-window) nil nil)
+  (setq mode-line-format maple-echoarea-format)
   (with-current-buffer maple-echoarea-buffer
     (erase-buffer))
-  (when (and maple-echoarea-show-p force)
+  (when maple-echoarea-show-p
+    (set-window-fringes (minibuffer-window) nil nil)
+    (set-window-margins (minibuffer-window) nil nil)
     (force-window-update))
   (setq maple-echoarea-show-p nil))
-
-(defun maple-echoarea-mode ()
-  "Setup the default modeline."
-  (if (current-message)
-      (maple-echoarea-unshow t)
-    (maple-echoarea-show t)))
-
-(defun maple-echoarea-message (&rest _args)
-  "Advice message with ARGS."
-  (maple-echoarea-mode))
 
 (defun maple-echoarea-enable ()
   "Setup the default modeline."
   (interactive)
-  (when mode-line-format
-    (setq maple-echoarea-format mode-line-format)
-    (setq mode-line-format nil))
-  (maple-echoarea-show t)
-  (add-hook 'minibuffer-setup-hook 'maple-echoarea-enter)
-  (advice-add 'message :after 'maple-echoarea-message))
+  (maple-echoarea-show)
+  (advice-add 'message :after 'maple-echoarea-message)
+  (add-hook 'minibuffer-setup-hook 'maple-echoarea-enter))
 
 (defun maple-echoarea-disable ()
   "Disable modeline."
   (interactive)
-  (remove-hook 'minibuffer-setup-hook 'maple-echoarea-enter)
+  (maple-echoarea-unshow)
   (advice-remove 'message 'maple-echoarea-message)
-  (maple-echoarea-unshow t))
+  (remove-hook 'minibuffer-setup-hook 'maple-echoarea-enter))
+
+;;;###autoload
+(define-minor-mode maple-echoarea-mode
+  "maple echoarea mode"
+  :group      'maple-echoarea
+  :global     t
+  (if maple-echoarea-mode (maple-echoarea-enable) (maple-echoarea-disable)))
 
 (provide 'maple-echoarea)
 ;;; maple-echoarea.el ends here
