@@ -32,6 +32,19 @@
   "Display maple line in window side."
   :group 'maple)
 
+(defcustom maple-echoarea-type 'timer
+  "How to hide mode-line."
+  :group 'maple-echoarea
+  :type '(choice (const timer)
+                 (const auto)))
+
+(defcustom maple-echoarea-interval 0.5
+  "When timer hide mode-line interval time."
+  :group 'maple-echoarea
+  :type 'float)
+
+(defvar maple-echoarea-timer nil)
+
 (defun maple-echoarea-enter()
   "Setup after enter minibuffer."
   (with-selected-window (minibuffer-selected-window)
@@ -45,7 +58,8 @@
 
 (defun maple-echoarea-hide-mode-line()
   "Unshow modeline with FORCE."
-  (setq maple-echoarea-format mode-line-format)
+  (when mode-line-format
+    (setq maple-echoarea-format mode-line-format))
   (setq mode-line-format nil))
 
 (defun maple-echoarea-show ()
@@ -63,7 +77,8 @@
 
 (defun maple-echoarea-unshow ()
   "Unshow modeline with FORCE."
-  (setq mode-line-format maple-echoarea-format)
+  (when maple-echoarea-format
+    (setq mode-line-format maple-echoarea-format))
   (with-current-buffer maple-echoarea-buffer
     (erase-buffer))
   (when maple-echoarea-show-p
@@ -76,14 +91,20 @@
   "Setup the default modeline."
   (interactive)
   (maple-echoarea-show)
-  (advice-add 'message :after 'maple-echoarea-message)
+  (if (eq maple-echoarea-type 'timer)
+      (setq maple-echoarea-timer
+            (run-with-idle-timer maple-echoarea-interval t 'maple-echoarea-message))
+    (advice-add 'message :after 'maple-echoarea-message))
   (add-hook 'minibuffer-setup-hook 'maple-echoarea-enter))
 
 (defun maple-echoarea-disable ()
   "Disable modeline."
   (interactive)
   (maple-echoarea-unshow)
-  (advice-remove 'message 'maple-echoarea-message)
+  (if (and (eq maple-echoarea-type 'timer)
+           (timerp maple-echoarea-timer))
+      (cancel-timer maple-echoarea-timer)
+    (advice-remove 'message 'maple-echoarea-message))
   (remove-hook 'minibuffer-setup-hook 'maple-echoarea-enter))
 
 ;;;###autoload
